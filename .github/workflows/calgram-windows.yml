@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 360
 
     env:
-      CONFIG: ${{ inputs.config || 'Debug' }}
+      CALGRAM_CONFIG: ${{ inputs.config || 'Debug' }}
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
 
     defaults:
@@ -74,7 +74,7 @@ jobs:
 
           echo "$(sha256sum $TBUILD/$REPO_NAME/$PREPARE_PATH | awk '{ print $1 }')" >> CACHE_KEY.txt
           echo "$SDK" >> CACHE_KEY.txt
-          echo "$CONFIG" >> CACHE_KEY.txt
+          echo "$CALGRAM_CONFIG" >> CACHE_KEY.txt
           echo "CACHE_KEY=$(sha256sum CACHE_KEY.txt | awk '{ print $1 }')" >> $GITHUB_ENV
 
           git config --global user.email "calgram@localhost"
@@ -131,7 +131,7 @@ jobs:
         id: libs
         timeout-minutes: 290
         run: |
-          if "%CONFIG%"=="Debug" (set SKIP=skip-release) else (set SKIP=)
+          if "%CALGRAM_CONFIG%"=="Debug" (set SKIP=skip-release) else (set SKIP=)
           %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat %SKIP% silent
 
       - name: Free up some disk space.
@@ -199,23 +199,23 @@ jobs:
 
           call configure.bat x64 ^
           %CALGRAM_API% ^
-          -D CMAKE_CONFIGURATION_TYPES=%CONFIG% ^
+          -D CMAKE_CONFIGURATION_TYPES=%CALGRAM_CONFIG% ^
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
 
-          cmake --build ..\out --config %CONFIG% --parallel
+          cmake --build ..\out --config %CALGRAM_CONFIG% --parallel
 
       - name: Package.
         shell: bash
         run: |
           mkdir -p artifact
-          cp "$TBUILD/$REPO_NAME/out/$CONFIG/Telegram.exe" artifact/Calgram.exe
+          cp "$TBUILD/$REPO_NAME/out/$CALGRAM_CONFIG/Telegram.exe" artifact/Calgram.exe
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - uses: actions/upload-artifact@v7
         name: Upload Calgram.
         with:
-          name: Calgram-${{ env.CONFIG }}-${{ env.SHORT_SHA }}
+          name: Calgram-${{ env.CALGRAM_CONFIG }}-${{ env.SHORT_SHA }}
           path: artifact\
           retention-days: 30
