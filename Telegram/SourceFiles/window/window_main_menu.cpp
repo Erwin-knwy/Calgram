@@ -736,7 +736,8 @@ void MainMenu::setupMenu() {
 			st::mainMenuButton);
 		wallet->toggleOn(session->appConfig().value(
 		) | rpl::map([=] {
-			return session->appConfig().walletAvailable();
+			// Calgram: the office doesn't use the wallet - never show it.
+			return false && session->appConfig().walletAvailable();
 		}) | rpl::distinct_until_changed());
 		wallet->finishAnimating();
 		wallet->entity()->setClickedCallback([=] {

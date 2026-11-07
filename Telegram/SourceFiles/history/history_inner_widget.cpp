@@ -3061,6 +3061,22 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					highlightId);
 			}, &st::menuIconViewReplies);
 		}
+		// Calgram: "View Thread" on every reply in a group, not only on
+		// a message that has replies of its own. Opens the whole
+		// discussion from its first message, scrolled to this one.
+		if (!topicRootId
+			&& item->history()->peer->isMegagroup()
+			&& item->replyToTop()
+			&& item->replyToTop() != item->id) {
+			const auto threadRootId = item->replyToTop();
+			const auto threadItemId = item->id;
+			_menu->addAction(u"View Thread"_q, [=] {
+				controller->showRepliesForMessage(
+					_history,
+					threadRootId,
+					threadItemId);
+			}, &st::menuIconViewReplies);
+		}
 		const auto t = base::unixtime::now();
 		const auto editItem = (albumPartItem && albumPartItem->allowsEdit(t))
 			? albumPartItem

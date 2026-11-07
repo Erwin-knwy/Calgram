@@ -1,0 +1,221 @@
+name: Calgram Windows
+
+# Builds Calgram.exe (64-bit Windows) on GitHub's free Windows machines.
+# Based on Telegram's own win.yml. Differences:
+#   - x64 only, one configuration;
+#   - our api_id/api_hash from the CALGRAM_API_ID / CALGRAM_API_HASH
+#     secrets (Telegram's limited test keys when they're not set yet);
+#   - auto-update and crash reports off: the official updater would
+#     replace Calgram with official Telegram, and crash dumps would go
+#     to Telegram;
+#   - the compiled libraries are saved after every run, even a failed or
+#     timed-out one, so the first (very long) build can finish over
+#     several runs: re-run the workflow and it continues where it stopped.
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        description: "Debug builds faster; Release is what agents get."
+        type: choice
+        options: [Debug, Release]
+        default: Debug
+  push:
+    branches: [calgram]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'changelog.txt'
+
+concurrency:
+  group: calgram-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Calgram x64 (${{ inputs.config || 'Debug' }})
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    env:
+      CONFIG: ${{ inputs.config || 'Debug' }}
+      PREPARE_PATH: "Telegram/build/prepare/prepare.py"
+
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Prepare directories.
+        run: |
+          mkdir %userprofile%\TBuild\Libraries
+          mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
+          echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
+          echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries\win64>>%GITHUB_ENV%
+
+      - name: Get repository name.
+        shell: bash
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
+
+      - name: Clone.
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          path: ${{ env.TBUILD }}\${{ env.REPO_NAME }}
+
+      - name: First set up.
+        shell: bash
+        run: |
+          DOCPATH=$TBUILD/$REPO_NAME/docs/building-win.md
+          SDK="$(grep "SDK version" $DOCPATH | sed -r 's/.*\*\*(.*)\*\* SDK version.*/\1/')"
+          echo "SDK=$SDK" >> $GITHUB_ENV
+
+          sed -i '/CMAKE_${lang}_FLAGS_DEBUG_INIT/s/${_Zi}//' "$PROGRAMFILES"/CMake/share/cmake*/Modules/Platform/Windows-MSVC.cmake
+
+          echo "$(sha256sum $TBUILD/$REPO_NAME/$PREPARE_PATH | awk '{ print $1 }')" >> CACHE_KEY.txt
+          echo "$SDK" >> CACHE_KEY.txt
+          echo "$CONFIG" >> CACHE_KEY.txt
+          echo "CACHE_KEY=$(sha256sum CACHE_KEY.txt | awk '{ print $1 }')" >> $GITHUB_ENV
+
+          git config --global user.email "calgram@localhost"
+          git config --global user.name "Calgram CI"
+
+      - uses: Eden-CI/msvc-dev-cmd@master
+        name: Native Tools Command Prompt.
+        with:
+          arch: x64
+          sdk: ${{ env.SDK }}
+          toolset: '14.44'
+
+      - name: NuGet sources.
+        run: |
+          nuget sources Disable -Name "Microsoft Visual Studio Offline Packages"
+          nuget sources Add -Source https://api.nuget.org/v3/index.json & exit 0
+
+      - name: Restore ThirdParty.
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.TBUILD }}\ThirdParty
+          key: calgram-third-party-${{ env.CACHE_KEY }}
+          restore-keys: calgram-third-party-${{ env.CACHE_KEY }}-
+
+      - name: Restore Libraries.
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ env.LibrariesPath }}\*
+            !${{ env.LibrariesPath }}\cache_keys
+            !${{ env.LibrariesPath }}\[qQ]t[_-]*
+            ${{ env.LibrariesPath }}\cache_keys\*
+            !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
+          key: calgram-libs-${{ env.CACHE_KEY }}
+          restore-keys: calgram-libs-${{ env.CACHE_KEY }}-
+
+      - name: Restore Qt.
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ env.LibrariesPath }}\[qQ]t[_-]*
+            ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
+          key: calgram-qt-${{ env.CACHE_KEY }}
+          restore-keys: calgram-qt-${{ env.CACHE_KEY }}-
+
+      - name: Fingerprint libraries before.
+        shell: bash
+        run: |
+          fp() { find "$TBUILD/ThirdParty/cache_keys" "$LibrariesPath/cache_keys" -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -c1-16; }
+          echo "LIBS_BEFORE=$(fp)" >> $GITHUB_ENV
+
+      # Debug needs only the debug libraries (skip-release); Release builds both.
+      - name: Libraries.
+        id: libs
+        timeout-minutes: 290
+        run: |
+          if "%CONFIG%"=="Debug" (set SKIP=skip-release) else (set SKIP=)
+          %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat %SKIP% silent
+
+      - name: Free up some disk space.
+        if: always() && steps.libs.outcome != 'skipped'
+        shell: bash
+        run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' ')' -type f ')' -o -empty ')' -delete
+
+      - name: Did the libraries change?
+        id: libs-changed
+        if: always() && steps.libs.outcome != 'skipped'
+        shell: bash
+        run: |
+          fp() { find "$TBUILD/ThirdParty/cache_keys" "$LibrariesPath/cache_keys" -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -c1-16; }
+          AFTER=$(fp)
+          echo "before $LIBS_BEFORE, after $AFTER"
+          [ "$AFTER" != "$LIBS_BEFORE" ] && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+
+      # Saved even when the Libraries step failed or ran out of time, so the
+      # next run continues from here instead of starting over.
+      - name: Save ThirdParty.
+        if: always() && steps.libs-changed.outputs.changed == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.TBUILD }}\ThirdParty
+          key: calgram-third-party-${{ env.CACHE_KEY }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save Libraries.
+        if: always() && steps.libs-changed.outputs.changed == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.LibrariesPath }}\*
+            !${{ env.LibrariesPath }}\cache_keys
+            !${{ env.LibrariesPath }}\[qQ]t[_-]*
+            ${{ env.LibrariesPath }}\cache_keys\*
+            !${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
+          key: calgram-libs-${{ env.CACHE_KEY }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save Qt.
+        if: always() && steps.libs-changed.outputs.changed == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.LibrariesPath }}\[qQ]t[_-]*
+            ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
+          key: calgram-qt-${{ env.CACHE_KEY }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: API keys.
+        shell: bash
+        env:
+          API_ID: ${{ secrets.CALGRAM_API_ID }}
+          API_HASH: ${{ secrets.CALGRAM_API_HASH }}
+        run: |
+          if [ -n "$API_ID" ] && [ -n "$API_HASH" ]; then
+            echo "Using Calgram's own api_id."
+            echo "CALGRAM_API=-D TDESKTOP_API_ID=$API_ID -D TDESKTOP_API_HASH=$API_HASH" >> $GITHUB_ENV
+          else
+            echo "::warning::CALGRAM_API_ID / CALGRAM_API_HASH secrets not set - using Telegram's test keys. Login may fail; don't give this build to agents."
+            echo "CALGRAM_API=-D TDESKTOP_API_TEST=ON" >> $GITHUB_ENV
+          fi
+
+      - name: Calgram build.
+        run: |
+          cd %TBUILD%\%REPO_NAME%\Telegram
+
+          call configure.bat x64 ^
+          %CALGRAM_API% ^
+          -D CMAKE_CONFIGURATION_TYPES=%CONFIG% ^
+          -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
+          -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
+          -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
+
+          cmake --build ..\out --config %CONFIG% --parallel
+
+      - name: Package.
+        shell: bash
+        run: |
+          mkdir -p artifact
+          cp "$TBUILD/$REPO_NAME/out/$CONFIG/Telegram.exe" artifact/Calgram.exe
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v7
+        name: Upload Calgram.
+        with:
+          name: Calgram-${{ env.CONFIG }}-${{ env.SHORT_SHA }}
+          path: artifact\
+          retention-days: 30

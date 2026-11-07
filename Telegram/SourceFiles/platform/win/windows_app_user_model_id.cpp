@@ -28,7 +28,8 @@ const PROPERTYKEY pkey_AppUserModel_ToastActivator = { { 0x9F4C2855, 0x9F79, 0x4
 #ifdef OS_WIN_STORE
 const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop.Store";
 #else // OS_WIN_STORE
-const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop";
+// Calgram: own taskbar group and notifications, apart from Telegram's.
+const WCHAR AppUserModelIdBase[] = L"CalRecycles.Calgram";
 #endif // OS_WIN_STORE
 
 [[nodiscard]] QString PinnedIconsPath() {
