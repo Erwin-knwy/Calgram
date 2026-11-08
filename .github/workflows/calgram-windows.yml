@@ -46,6 +46,28 @@ jobs:
         shell: cmd
 
     steps:
+      # A Release build compiles Qt twice (debug + release) and runs out of
+      # space on C: next to everything GitHub preinstalls. Drop the big
+      # tools we never use.
+      - name: Free disk space (Release).
+        if: (inputs.config || 'Debug') == 'Release'
+        shell: pwsh
+        run: |
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}, @{n='UsedGB';e={[math]::Round($_.Used/1GB,1)}}
+          $paths = @(
+            'C:\Android', 'C:\ghcup', 'C:\cabal', 'C:\Program Files\MongoDB',
+            'C:\Program Files\MySQL', 'C:\Program Files\R', 'C:\SeleniumWebDrivers',
+            'C:\tools\kotlinc', 'C:\Program Files\Microsoft Service Fabric',
+            'C:\Program Files\Microsoft SDKs\Service Fabric', 'C:\Program Files\Amazon',
+            'C:\hostedtoolcache\windows\go', 'C:\hostedtoolcache\windows\Ruby',
+            'C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk', 'C:\hostedtoolcache\windows\stack',
+            'C:\ProgramData\chocolatey\lib\pulumi', 'C:\ProgramData\chocolatey\lib\maven'
+          )
+          foreach ($path in $paths) {
+            if (Test-Path $path) { cmd /c "rmdir /s /q `"$path`"" }
+          }
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}, @{n='UsedGB';e={[math]::Round($_.Used/1GB,1)}}
+
       - name: Prepare directories.
         run: |
           mkdir %userprofile%\TBuild\Libraries
