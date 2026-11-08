@@ -27,6 +27,7 @@ It is not made or endorsed by Telegram.
 | "View Thread" on every reply in a group, not only on the first message | `history/history_inner_widget.cpp` |
 | Wallet hidden from the main menu | `window/window_main_menu.cpp` |
 | `tg://calgram_post?channel=1890609315&reply=<msg>&text=<text>`: opens the office group with the text typed as a reply to that message; the agent presses Send (for the CRM's "Post in Calgram") | `core/local_url_handlers.cpp` |
+| "Lead: Hanna" / "Lead: You" / "Lead: Pool" next to the sender on every office-group message: signs in to the CRM automatically with the bot web app's Telegram-signed data (no login), asks `POST /api/calgram/owners` | `calgram/calgram_crm.*`, `history/view/history_view_message.cpp`, `CMakeLists.txt` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
 
 ## Branches
