@@ -46,13 +46,33 @@ jobs:
         shell: cmd
 
     steps:
-      - name: Prepare directories.
-        # The build lives on D: (220 GB free; C: has ~28 GB, too little for
-        # a Release build) but keeps Telegram's path %userprofile%\TBuild
-        # through a junction: the cached libraries record that absolute path.
+      # A Release build compiles Qt twice (debug + release) and C: has only
+      # ~28 GB free next to everything GitHub preinstalls. Drop big tools we
+      # never use.
+      - name: Free disk space (Release).
+        if: (inputs.config || 'Debug') == 'Release'
+        shell: pwsh
         run: |
-          mkdir D:\TBuild\Libraries
-          mklink /J %userprofile%\TBuild D:\TBuild
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}
+          $paths = @(
+            'C:\Android', 'C:\ghcup', 'C:\cabal', 'C:\Program Files\MongoDB',
+            'C:\Program Files\MySQL', 'C:\Program Files\R', 'C:\SeleniumWebDrivers',
+            'C:\tools\kotlinc', 'C:\Program Files\Amazon',
+            'C:\hostedtoolcache\windows\go', 'C:\hostedtoolcache\windows\Ruby',
+            'C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk', 'C:\hostedtoolcache\windows\stack',
+            'C:\ProgramData\chocolatey\lib\pulumi', 'C:\ProgramData\chocolatey\lib\maven'
+          )
+          foreach ($path in $paths) {
+            if (Test-Path $path) { cmd /c "rmdir /s /q `"$path`" 2>nul" }
+          }
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}
+
+      - name: Prepare directories.
+        # Libraries stay at Telegram's path on C: - prepare.py resolves real
+        # paths and the cached libraries record them. Calgram's own build
+        # output goes to D: (see "Build output on D:").
+        run: |
+          mkdir %userprofile%\TBuild\Libraries
           mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
           echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries\win64>>%GITHUB_ENV%
@@ -226,6 +246,15 @@ jobs:
             echo "::warning::CALGRAM_API_ID / CALGRAM_API_HASH secrets not set - using Telegram's test keys. Login may fail; don't give this build to agents."
             echo "CALGRAM_API=-D TDESKTOP_API_TEST=ON" >> $GITHUB_ENV
           fi
+
+      # Calgram's own compile output is tens of GB - more than C: has left.
+      # D: has ~220 GB; run_cmake.py keeps an existing out folder.
+      - name: Build output on D:.
+        run: |
+          if not exist %TBUILD%\%REPO_NAME%\out (
+            mkdir D:\calgram-out
+            mklink /J %TBUILD%\%REPO_NAME%\out D:\calgram-out
+          )
 
       - name: Calgram build.
         run: |
