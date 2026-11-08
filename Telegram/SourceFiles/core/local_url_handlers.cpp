@@ -78,6 +78,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "wallet/wallet_panel.h"
 #include "wallet/wallet_ton_connect_link.h"
 #include "apiwrap.h"
+#include "data/data_changes.h" // Calgram
+#include "data/data_drafts.h" // Calgram
 
 #include "styles/style_chat_helpers.h"
 
@@ -908,6 +910,61 @@ bool ResolvePrivatePost(
 		.clickFromMessageId = my.itemId,
 		.clickFromBotWebviewContext = my.botWebviewContext,
 	});
+	controller->window().activate();
+	return true;
+}
+
+// Calgram: tg://calgram_post?channel=<id>&reply=<msg id>&text=<text>
+// opens the office group with <text> already typed in the message field,
+// as a reply to <msg id> (the lead's thread). Nothing is sent: the agent
+// reads it and presses Send. Only the office group is accepted.
+constexpr auto kCalgramOfficeChannelId = uint64(1890609315);
+
+bool CalgramPrefillPost(
+		Window::SessionController *controller,
+		const Match &match,
+		const QVariant &context) {
+	if (!controller) {
+		return false;
+	}
+	const auto params = url_parse_params(
+		match->captured(1),
+		qthelp::UrlParamNameTransform::ToLower);
+	const auto channelId = ChannelId(
+		params.value(u"channel"_q).toULongLong());
+	const auto replyId = MsgId(params.value(u"reply"_q).toLongLong());
+	const auto text = params.value(u"text"_q);
+	if (channelId.bare != kCalgramOfficeChannelId || text.isEmpty()) {
+		return false;
+	}
+	const auto peerId = peerFromChannel(channelId);
+	const auto peer = controller->session().data().peerLoaded(peerId);
+	if (!peer) {
+		controller->showToast(
+			u"Open the office group in Calgram first, then try again."_q);
+		return true;
+	}
+	const auto history = peer->owner().history(peer);
+	auto cursor = MessageCursor();
+	cursor.position = cursor.anchor = int(text.size());
+	history->setLocalDraft(std::make_unique<Data::Draft>(
+		TextWithTags{ text, {} },
+		FullReplyTo{
+			.messageId = (IsServerMsgId(replyId)
+				? FullMsgId(peerId, replyId)
+				: FullMsgId()),
+		},
+		SuggestOptions(),
+		cursor,
+		Data::WebPageDraft()));
+	history->clearLocalEditDraft(MsgId(), PeerId());
+	history->session().changes().entryUpdated(
+		history,
+		Data::EntryUpdate::Flag::LocalDraftSet);
+	controller->showPeerHistory(
+		history,
+		Window::SectionShow::Way::ClearStack,
+		ShowAtUnreadMsgId);
 	controller->window().activate();
 	return true;
 }
@@ -1956,6 +2013,10 @@ const std::vector<LocalUrlHandler> &LocalUrlHandlers() {
 		{
 			u"^privatepost/?\\?(.+)(#|$)"_q,
 			ResolvePrivatePost
+		},
+		{
+			u"^calgram_post/?\\?(.+)(#|$)"_q, // Calgram
+			CalgramPrefillPost
 		},
 		{
 			u"^test_chat_theme/?\\?(.+)(#|$)"_q,

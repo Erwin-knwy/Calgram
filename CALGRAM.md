@@ -26,6 +26,7 @@ It is not made or endorsed by Telegram.
 | Calgram icon (the office recycle icon) | `Resources/art/icon256.ico`, `icon256.png`, `logo_256*.png`, `icon_round512@2x.png` |
 | "View Thread" on every reply in a group, not only on the first message | `history/history_inner_widget.cpp` |
 | Wallet hidden from the main menu | `window/window_main_menu.cpp` |
+| `tg://calgram_post?channel=1890609315&reply=<msg>&text=<text>`: opens the office group with the text typed as a reply to that message; the agent presses Send (for the CRM's "Post in Calgram") | `core/local_url_handlers.cpp` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
 
 ## Branches
