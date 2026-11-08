@@ -43,6 +43,15 @@ the run's *Artifacts*. The first build compiles all of Telegram's
 libraries and can take longer than GitHub's 6-hour limit; just re-run it,
 and it continues where it stopped.
 
+GitHub's free Windows machines need four workarounds, all in the
+workflow - keep them: MSYS2's `pacman-key` reads a `CONFIG` variable (ours
+is `CALGRAM_CONFIG`); Release installs ATL for the v14.44 toolset
+(breakpad); the libraries stay at Telegram's C: path (the cache records
+it) while Calgram's own `out` folder is a junction to D: (C: has ~28 GB);
+and a 16-32 GB page file on D: (the Release compile runs out of memory
+otherwise). A Release build takes about 2.5 hours once libraries are
+cached, Debug about 70 minutes.
+
 Before giving a build to agents:
 1. Set the repo secrets `CALGRAM_API_ID` and `CALGRAM_API_HASH` (from
    my.telegram.org -> API development tools). Without them the build uses
