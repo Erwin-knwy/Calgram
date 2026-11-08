@@ -29,7 +29,7 @@ on:
 
 concurrency:
   group: calgram-windows-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false  # queue, never throw away a long library build
 
 jobs:
   windows:
