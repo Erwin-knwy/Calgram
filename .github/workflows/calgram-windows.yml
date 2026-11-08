@@ -67,6 +67,15 @@ jobs:
           }
           Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}
 
+      # The Release compile ran out of memory (C1060 "out of heap space")
+      # on the runner's 16 GB. A big page file on D: gives it room.
+      - name: Larger page file.
+        uses: al-cheb/configure-pagefile-action@v1.5
+        with:
+          minimum-size: 16GB
+          maximum-size: 32GB
+          disk-root: "D:"
+
       - name: Prepare directories.
         # Libraries stay at Telegram's path on C: - prepare.py resolves real
         # paths and the cached libraries record them. Calgram's own build
