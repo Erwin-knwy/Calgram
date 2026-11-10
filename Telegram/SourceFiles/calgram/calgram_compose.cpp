@@ -124,10 +124,10 @@ void LoadScriptTags(not_null<Main::Session*> session) {
 	const auto weak = base::make_weak(session);
 	const auto finish = [=](std::vector<QString> list) {
 		if (const auto strong = weak.get()) {
-			auto &tags = ScriptTagsFor(strong);
-			tags.list = std::move(list);
-			tags.loadedAt = crl::now();
-			tags.loading = false;
+			auto &loaded = ScriptTagsFor(strong);
+			loaded.list = std::move(list);
+			loaded.loadedAt = crl::now();
+			loaded.loading = false;
 		}
 	};
 	// One list with every #email and #text script, when the CRM has it.
@@ -284,9 +284,9 @@ bool HoldForNumberCheck(
 	const auto weak = base::make_weak(controller);
 	const auto go = [=] {
 		if (const auto strong = weak.get()) {
-			auto &check = NumberCheckFor(&strong->session());
-			check.checkingText = QString();
-			check.confirmedText = text;
+			auto &state = NumberCheckFor(&strong->session());
+			state.checkingText = QString();
+			state.confirmedText = text;
 			send();
 		}
 	};

@@ -274,6 +274,8 @@ jobs:
 
       - name: Calgram build.
         run: |
+          rem Compiler errors become public notes on the run page.
+          echo ::add-matcher::%TBUILD%\%REPO_NAME%\.github\msvc-matcher.json
           cd %TBUILD%\%REPO_NAME%\Telegram
 
           call configure.bat x64 ^
