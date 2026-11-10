@@ -37,6 +37,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 360
 
+    # attestations: GitHub signs a record that Calgram.exe was built here,
+    # from this exact commit of the public code (build provenance).
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
     env:
       CALGRAM_CONFIG: ${{ inputs.config || 'Debug' }}
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
@@ -284,6 +291,18 @@ jobs:
           mkdir -p artifact
           cp "$TBUILD/$REPO_NAME/out/$CALGRAM_CONFIG/Telegram.exe" artifact/Calgram.exe
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          # The fingerprint anyone can compare with PowerShell's
+          # Get-FileHash Calgram.exe
+          sha256sum artifact/Calgram.exe | tee artifact/Calgram.exe.sha256.txt
+
+      # Signed proof, kept by GitHub, that this Calgram.exe came from this
+      # commit of the public code. Check it: the repo's Actions ->
+      # Attestations page, or `gh attestation verify Calgram.exe -R
+      # Erwin-knwy/Calgram`. See CALGRAM.md "Proving a download".
+      - uses: actions/attest-build-provenance@v2
+        name: Sign build provenance.
+        with:
+          subject-path: artifact/Calgram.exe
 
       - uses: actions/upload-artifact@v7
         name: Upload Calgram.

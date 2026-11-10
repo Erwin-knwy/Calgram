@@ -58,6 +58,21 @@ Before giving a build to agents:
    Telegram's test keys, and logins may fail.
 2. Build with **Release**.
 
+## Proving a download
+
+Every build is signed by GitHub with *build provenance*: a record that
+this exact `Calgram.exe` was built by this repo's workflow from one
+commit of the public code. Nobody's computer is involved, ours included.
+To check a copy:
+1. In PowerShell: `Get-FileHash Calgram.exe` gives its SHA256
+   fingerprint (the download also has it in `Calgram.exe.sha256.txt`).
+2. On GitHub: **Actions -> Attestations** lists every signed build with
+   its fingerprint and commit. The two fingerprints must match.
+3. Or, with the GitHub CLI: `gh attestation verify Calgram.exe -R
+   Erwin-knwy/Calgram`.
+
+Builds from before 2026-11-10 (733cb75 and older) have no attestation.
+
 ## Taking a Telegram update
 
 1. Update `dev` from Telegram (GitHub's "Sync fork" on the `dev` branch).
