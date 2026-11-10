@@ -915,9 +915,8 @@ bool ResolvePrivatePost(
 }
 
 // Calgram: tg://calgram_post?channel=<id>&reply=<msg id>&text=<text>
-// opens the office group with <text> already typed in the message field,
-// as a reply to <msg id> (the lead's thread). Nothing is sent: the agent
-// reads it and presses Send. Only the office group is accepted.
+// puts <text> in the office group's message field as a reply to <msg id>.
+// Nothing is sent until the user presses Send.
 constexpr auto kCalgramOfficeChannelId = uint64(1890609315);
 
 bool CalgramPrefillPost(

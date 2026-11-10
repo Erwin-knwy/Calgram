@@ -18,9 +18,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #endif // TDESKTOP_ALLOW_CLOSED_ALPHA
 
 // used in Updater.cpp and Setup.iss for Windows
-// Calgram: its own identity, so it installs next to official Telegram
-// without sharing its data folder (%APPDATA%\<AppName>), installer id
-// or startup shortcut (<AppFile>.lnk).
+// Calgram: own app id and name, so it doesn't share Telegram's data folder.
 constexpr auto AppId = "{CFCE92AB-B46B-4AC3-9706-3845304A2728}"_cs;
 constexpr auto AppNameOld = "Calgram (Unofficial)"_cs;
 constexpr auto AppName = "Calgram"_cs;

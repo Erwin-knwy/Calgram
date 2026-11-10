@@ -3061,9 +3061,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					highlightId);
 			}, &st::menuIconViewReplies);
 		}
-		// Calgram: "View Thread" on every reply in a group, not only on
-		// a message that has replies of its own. Opens the whole
-		// discussion from its first message, scrolled to this one.
+		// Calgram: "View Thread" on any reply in a group.
 		if (!topicRootId
 			&& item->history()->peer->isMegagroup()
 			&& item->replyToTop()

@@ -5,6 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
+#include "calgram/calgram_text.h" // Calgram
 #include "history/view/history_view_element.h"
 
 #include "apiwrap.h"
@@ -2283,7 +2284,9 @@ void Element::validateText() {
 		if (!unavailable.isEmpty()) {
 			setTextWithLinks(tr::italic(unavailable));
 		} else {
-			setTextWithLinks(_textItem->translatedTextWithLocalEntities());
+			setTextWithLinks(Calgram::CollapseLongText( // Calgram
+				item,
+				_textItem->translatedTextWithLocalEntities()));
 			richPage = _textItem->translatedRichPage();
 		}
 	}

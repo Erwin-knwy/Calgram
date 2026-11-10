@@ -28,6 +28,8 @@ It is not made or endorsed by Telegram.
 | Wallet hidden from the main menu | `window/window_main_menu.cpp` |
 | `tg://calgram_post?channel=1890609315&reply=<msg>&text=<text>`: opens the office group with the text typed as a reply to that message; the agent presses Send (for the CRM's "Post in Calgram") | `core/local_url_handlers.cpp` |
 | "Lead: Hanna" / "Lead: You" / "Lead: Pool" next to the sender on every office-group message: signs in to the CRM automatically with the bot web app's Telegram-signed data (no login), asks `POST /api/calgram/owners` | `calgram/calgram_crm.*`, `history/view/history_view_message.cpp`, `CMakeLists.txt` |
+| Click on "Lead: ..." opens that lead in the CRM (an agent's own, a pool lead, or any lead for an admin); someone else's lead shows whose it is | `calgram/calgram_crm.*`, `history/view/history_view_message.cpp` |
+| Long office-group posts (emails, lead posts) show their first 3 lines; the rest is a collapsed quote that opens with a click | `calgram/calgram_text.*`, `history/view/history_view_element.cpp`, `CMakeLists.txt` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
 
 ## Branches

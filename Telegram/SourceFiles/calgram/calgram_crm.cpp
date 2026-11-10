@@ -1,6 +1,6 @@
 /*
-Calgram - California Recycles' build of Telegram Desktop.
-Not part of Telegram Desktop; see CALGRAM.md.
+This file is part of Calgram, a build of Telegram Desktop.
+See CALGRAM.md.
 */
 #include "calgram/calgram_crm.h"
 
@@ -11,13 +11,17 @@ Not part of Telegram Desktop; see CALGRAM.md.
 #include "data/data_user.h"
 #include "history/history.h"
 #include "history/history_item.h"
+#include "history/view/history_view_element.h"
 #include "main/main_session.h"
+#include "ui/click_handler.h"
+#include "window/window_session_controller.h"
 
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QUrl>
 #include <QtCore/QUrlQuery>
+#include <QtGui/QDesktopServices>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
@@ -29,15 +33,19 @@ constexpr auto kOfficeChannelId = uint64(1890609315);
 constexpr auto kBatchDelay = crl::time(300);
 constexpr auto kRetryDelay = crl::time(45 * 1000);
 constexpr auto kSignInMaxAge = crl::time(20 * 3600 * 1000); // CRM: 24 h
+constexpr auto kLeadUrl = "https://app.fruhlingswolke2.com/crm/app/lead/%1";
 constexpr auto kMaxBatch = 300;
 
 [[nodiscard]] PeerId OfficePeerId() {
 	return peerFromChannel(ChannelId(kOfficeChannelId));
 }
 
-// Signs in to the CRM with the Telegram-signed initData of the bot's web
-// app (the CRM already verifies it, "tma ..." header): no password, no
-// stored key, nothing sent in any chat.
+struct Lead {
+	int64 id = 0; // 0 if the viewer can't open it.
+	QString owner;
+};
+
+// Signs in with the bot web app's initData ("tma" header).
 class Crm final : public base::has_weak_ptr {
 public:
 	explicit Crm(not_null<Main::Session*> session)
@@ -64,7 +72,39 @@ public:
 		return {};
 	}
 
+	ClickHandlerPtr link(MsgId id) {
+		const auto i = _labels.find(id);
+		if (i == end(_labels) || i->second.isEmpty()) {
+			return nullptr;
+		}
+		auto &result = _links[id];
+		if (!result) {
+			const auto weak = base::make_weak(this);
+			result = std::make_shared<LambdaClickHandler>([=](
+					ClickContext context) {
+				if (const auto strong = weak.get()) {
+					strong->open(id, context);
+				}
+			});
+		}
+		return result;
+	}
+
 private:
+	void open(MsgId id, const ClickContext &context) {
+		const auto i = _leads.find(id);
+		if (i == end(_leads)) {
+			return;
+		} else if (i->second.id) {
+			QDesktopServices::openUrl(
+				QUrl(QString(kLeadUrl).arg(i->second.id)));
+		} else if (const auto controller
+				= HistoryView::ExtractController(context)) {
+			controller->showToast(
+				i->second.owner + u"'s lead - only they can open it."_q);
+		}
+	}
+
 	void send() {
 		if (_pending.empty() || _signingIn) {
 			return;
@@ -222,12 +262,19 @@ private:
 				continue;
 			}
 			auto names = QStringList();
+			auto lead = Lead();
 			for (const auto &value : owners.value(key).toArray()) {
 				const auto owner = value.toObject();
-				names.push_back(owner.value(u"mine"_q).toBool()
-					? u"You"_q
-					: owner.value(u"name"_q).toString());
+				const auto mine = owner.value(u"mine"_q).toBool();
+				const auto name = owner.value(u"name"_q).toString();
+				const auto leadId = int64(
+					owner.value(u"lead_id"_q).toDouble());
+				names.push_back(mine ? u"You"_q : name);
+				if (names.size() == 1 || (mine && leadId)) {
+					lead = { leadId, name };
+				}
 			}
+			_leads[id] = lead;
 			const auto shown = (names.size() > 2)
 				? (names.mid(0, 2).join(u", "_q)
 					+ u" +%1"_q.arg(names.size() - 2))
@@ -254,6 +301,8 @@ private:
 	base::Timer _batchTimer;
 	base::Timer _retryTimer;
 	base::flat_map<MsgId, QString> _labels;
+	base::flat_map<MsgId, Lead> _leads;
+	base::flat_map<MsgId, ClickHandlerPtr> _links;
 	base::flat_set<MsgId> _pending;
 	base::flat_set<MsgId> _inflight;
 	base::flat_set<MsgId> _retry;
@@ -263,14 +312,12 @@ private:
 
 };
 
-} // namespace
-
-QString LeadOwnerLabel(not_null<const HistoryItem*> item) {
+[[nodiscard]] Crm *CrmFor(not_null<const HistoryItem*> item) {
 	static auto All = base::flat_map<
 		not_null<Main::Session*>,
 		std::unique_ptr<Crm>>();
-	if (item->history()->peer->id != OfficePeerId()) {
-		return {};
+	if (!IsOfficeChat(item)) {
+		return nullptr;
 	}
 	const auto session = &item->history()->session();
 	auto i = All.find(session);
@@ -278,7 +325,23 @@ QString LeadOwnerLabel(not_null<const HistoryItem*> item) {
 		i = All.emplace(session, std::make_unique<Crm>(session)).first;
 		session->lifetime().add([=] { All.remove(session); });
 	}
-	return i->second->label(item);
+	return i->second.get();
+}
+
+} // namespace
+
+bool IsOfficeChat(not_null<const HistoryItem*> item) {
+	return (item->history()->peer->id == OfficePeerId());
+}
+
+QString LeadOwnerLabel(not_null<const HistoryItem*> item) {
+	const auto crm = CrmFor(item);
+	return crm ? crm->label(item) : QString();
+}
+
+ClickHandlerPtr LeadLink(not_null<const HistoryItem*> item) {
+	const auto crm = CrmFor(item);
+	return crm ? crm->link(item->id) : nullptr;
 }
 
 } // namespace Calgram

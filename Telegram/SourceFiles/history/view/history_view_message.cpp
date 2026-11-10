@@ -1166,7 +1166,7 @@ void Message::refreshRightBadge() {
 			? delegate()->elementAuthorRank(this)
 			: TextUtilities::RemoveEmoji(TextUtilities::SingleLine(text)))
 	};
-	// Calgram: whose CRM lead this message is about, next to the rank.
+	// Calgram: the CRM lead's owner, next to the rank.
 	if (const auto lead = Calgram::LeadOwnerLabel(item); !lead.isEmpty()) {
 		tagText = TextWithEntities{ tagText.empty()
 			? lead
@@ -4368,6 +4368,11 @@ bool Message::getStateFromName(
 				? (boostLeft - st::msgTagBadgeBoostSkip)
 				: badgeRight;
 			if (point.x() >= badgeLeft && point.x() < tagRight) {
+				// Calgram: a click on "Lead: ..." opens the lead.
+				if (auto lead = Calgram::LeadLink(item)) {
+					outResult->link = std::move(lead);
+					return true;
+				}
 				if (badge->special) {
 					return false;
 				}
