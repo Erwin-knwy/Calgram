@@ -69,7 +69,7 @@ quiet (no warning, no extra label) and everything else works.
 ## Building
 
 GitHub builds Calgram for free: **Actions -> Calgram Windows -> Run
-workflow** (or any push to `calgram`). The result is `Calgram.exe` under
+workflow** (or any push to `calgram` or a `feature/...` branch, as Debug). The result is `Calgram.exe` under
 the run's *Artifacts*. The first build compiles all of Telegram's
 libraries and can take longer than GitHub's 6-hour limit; just re-run it,
 and it continues where it stopped.

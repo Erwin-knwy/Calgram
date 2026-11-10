@@ -21,7 +21,7 @@ on:
         options: [Debug, Release]
         default: Debug
   push:
-    branches: [calgram]
+    branches: [calgram, 'feature/**']
     paths-ignore:
       - '**.md'
       - 'docs/**'
