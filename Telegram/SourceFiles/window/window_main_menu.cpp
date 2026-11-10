@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_main_menu.h"
 
+#include "calgram/calgram_menu.h" // Calgram
 #include "apiwrap.h"
 #include "base/event_filter.h"
 #include "base/qt_signal_producer.h"
@@ -720,6 +721,13 @@ void MainMenu::setupMenu() {
 			{ &st::menuIconSavedMessages }
 		)->setClickedCallback([=] {
 			controller->showPeerHistory(controller->session().user());
+		});
+		// Calgram: unanswered mentions and wrong emails.
+		addAction(
+			rpl::single(u"My open items"_q),
+			{ &st::menuIconNotifications }
+		)->setClickedCallback([=] {
+			Calgram::ShowOpenItems(controller);
 		});
 		const auto session = &controller->session();
 		const auto wallet = _menu->add(

@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_widget.h"
 
+#include "calgram/calgram_compose.h" // Calgram
 #include "api/api_compose_with_ai.h"
 #include "api/api_editing.h"
 #include "api/api_bot.h"
@@ -5912,6 +5913,12 @@ void HistoryWidget::send(Api::SendOptions options) {
 		return;
 	} else if (const auto page = shownRichMessage()) {
 		sendRichDraft(page, options);
+		return;
+	} else if (Calgram::HoldForNumberCheck( // Calgram
+			controller(),
+			_history->peer,
+			_field->getTextWithAppliedMarkdown().text,
+			crl::guard(this, [=] { send(options); }))) {
 		return;
 	}
 	if (!options.scheduled) {

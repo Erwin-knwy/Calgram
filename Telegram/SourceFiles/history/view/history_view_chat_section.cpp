@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_chat_section.h"
 
+#include "calgram/calgram_compose.h" // Calgram
 #include "history/admin_log/history_admin_log_section.h"
 #include "history/view/controls/history_view_top_controls.h"
 #include "history/view/controls/history_view_bottom_controls.h"
@@ -2441,6 +2442,12 @@ void ChatWidget::send(Api::SendOptions options) {
 		return;
 	} else if (const auto page = _composeControls->shownRichMessage()) {
 		sendRichDraft(page, options);
+		return;
+	} else if (Calgram::HoldForNumberCheck( // Calgram
+			controller(),
+			_peer,
+			_composeControls->getTextWithAppliedMarkdown().text,
+			crl::guard(this, [=] { send(options); }))) {
 		return;
 	}
 	if (!options.scheduled) {

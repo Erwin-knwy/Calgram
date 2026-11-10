@@ -31,7 +31,8 @@ changed, how it builds, how to take Telegram updates.
 Calgram talks to the CRM (repo `Erwin-knwy/CalRecycles_Bot`, served at
 `https://app.fruhlingswolke2.com/crm/`). It signs in with the Telegram-
 signed initData of the bot's web app `CalRecycles_MiniApp` - no password -
-and calls `POST /crm/api/calgram/owners` (`core/calgram_owners.py` there).
+through `Calgram::CrmRequest` (`calgram/calgram_crm.cpp`). The endpoints it
+uses, and the CRM changes it is waiting for, are listed in `CALGRAM.md`.
 CRM changes follow that repo's own CLAUDE.md and WORKFLOW.md: agents are
 live 9 AM - 3 PM Pacific, restart only the changed service.
 

@@ -5,9 +5,9 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
-#include "calgram/calgram_crm.h" // Calgram
 #include "history/view/history_view_message.h"
 
+#include "calgram/calgram_leads.h" // Calgram
 #include "api/api_suggest_post.h"
 #include "api/api_transcribes.h"
 #include "base/options.h"

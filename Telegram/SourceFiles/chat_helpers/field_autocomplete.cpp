@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/field_autocomplete.h"
 
+#include "calgram/calgram_compose.h" // Calgram
 #include "api/api_chat_participants.h"
 #include "api/api_common.h"
 #include "apiwrap.h"
@@ -673,6 +674,7 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 			}
 			hrows.push_back(tag);
 		}
+		Calgram::AppendScriptTags(_channel, _filter, hrows); // Calgram
 	} else if (_type == Type::BotCommands) {
 		const auto listAllSuggestions = _filter.isEmpty();
 		const auto hasUsername = _filter.indexOf('@') > 0;
