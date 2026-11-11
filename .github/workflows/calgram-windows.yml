@@ -274,8 +274,6 @@ jobs:
 
       - name: Calgram build.
         run: |
-          rem Compiler errors become public notes on the run page.
-          echo ::add-matcher::%TBUILD%\%REPO_NAME%\.github\msvc-matcher.json
           cd %TBUILD%\%REPO_NAME%\Telegram
 
           call configure.bat x64 ^
@@ -283,9 +281,24 @@ jobs:
           -D CMAKE_CONFIGURATION_TYPES=%CALGRAM_CONFIG% ^
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
-          -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
+          -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON > %TBUILD%\calgram_build.log 2>&1
 
-          cmake --build ..\out --config %CALGRAM_CONFIG% --parallel
+          cmake --build ..\out --config %CALGRAM_CONFIG% --parallel >> %TBUILD%\calgram_build.log 2>&1
+          set RC=%ERRORLEVEL%
+          type %TBUILD%\calgram_build.log
+          exit /b %RC%
+
+      # The log needs a GitHub login to read; a note on the run page doesn't.
+      - name: Show build errors.
+        if: failure()
+        shell: bash
+        run: |
+          LOG="$TBUILD/calgram_build.log"
+          [ -f "$LOG" ] || exit 0
+          grep -aiE "error|failed" "$LOG" | grep -aviE "warning|0 error" \
+            | awk '!seen[$0]++' | head -40 | cut -c1-400 > errors.txt || true
+          MSG=$(sed -e 's/%/%25/g' -e 's/\r//g' errors.txt | awk '{printf "%s%%0A", $0}')
+          echo "::error title=Calgram build errors::${MSG}"
 
       - name: Package.
         shell: bash
