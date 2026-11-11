@@ -19,6 +19,11 @@ See CALGRAM.md.
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 
+#ifdef Q_OS_WIN
+// Qt Network's DNS lookup, linked in with QNetworkAccessManager.
+#pragma comment(lib, "dnsapi.lib")
+#endif // Q_OS_WIN
+
 namespace Calgram {
 namespace {
 
