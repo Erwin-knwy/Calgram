@@ -9,6 +9,7 @@ See CALGRAM.md.
 #include "data/data_session.h"
 #include "history/history.h"
 #include "history/history_item.h"
+#include "history/history_item_components.h"
 #include "history/view/history_view_element.h"
 #include "main/main_session.h"
 #include "ui/click_handler.h"
@@ -16,6 +17,7 @@ See CALGRAM.md.
 
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonObject>
+#include <QtCore/QSettings>
 
 namespace Calgram {
 namespace {
@@ -24,18 +26,22 @@ constexpr auto kBatchDelay = crl::time(300);
 constexpr auto kRetryDelay = crl::time(45 * 1000);
 constexpr auto kRefreshAfter = crl::time(5 * 60 * 1000);
 constexpr auto kMaxBatch = 300;
+constexpr auto kDimmedOpacity = 0.35;
 
 struct Lead {
 	int64 id = 0; // 0 if the viewer can't open it.
 	QString owner;
 	QString status;
 	QString followUp;
+	bool mine = false;
+	bool pool = false;
 };
 
 struct Info {
 	QString label;
 	Lead lead;
 	crl::time at = 0;
+	bool mine = false;
 };
 
 // The CRM's POST /api/calgram/owners answers
@@ -65,6 +71,41 @@ public:
 			}
 		}
 		return (i != end(_info)) ? i->second.label : QString();
+	}
+
+	std::optional<LeadRef> lead(MsgId id) const {
+		const auto i = _info.find(id);
+		if (i == end(_info) || i->second.lead.owner.isEmpty()) {
+			return std::nullopt;
+		}
+		const auto &lead = i->second.lead;
+		return LeadRef{
+			.id = lead.id,
+			.owner = lead.owner,
+			.mine = lead.mine,
+			.pool = lead.pool,
+		};
+	}
+
+	void refresh(MsgId id) {
+		if (const auto i = _info.find(id); i != end(_info)) {
+			i->second.at = 0;
+		}
+		if (!_inflight.contains(id)) {
+			_failed.remove(id);
+			_pending.emplace(id);
+			if (!_batchTimer.isActive()) {
+				_batchTimer.callOnce(kBatchDelay);
+			}
+		}
+	}
+
+	// std::nullopt until the CRM has answered for this message.
+	std::optional<bool> mine(MsgId id) const {
+		const auto i = _info.find(id);
+		return (i != end(_info))
+			? std::make_optional(i->second.mine)
+			: std::nullopt;
 	}
 
 	ClickHandlerPtr link(MsgId id) {
@@ -171,9 +212,11 @@ private:
 			const auto key = QString::number(id.bare);
 			auto names = QStringList();
 			auto lead = Lead();
+			auto anyMine = false;
 			for (const auto &value : owners.value(key).toArray()) {
 				const auto owner = value.toObject();
 				const auto mine = owner.value(u"mine"_q).toBool();
+				anyMine |= mine;
 				const auto name = owner.value(u"name"_q).toString();
 				names.push_back(mine ? u"You"_q : name);
 				const auto leadId = int64(
@@ -184,6 +227,8 @@ private:
 						.owner = name,
 						.status = owner.value(u"status"_q).toString(),
 						.followUp = owner.value(u"follow_up"_q).toString(),
+						.mine = mine,
+						.pool = owner.value(u"pool"_q).toBool(),
 					};
 				}
 			}
@@ -207,7 +252,12 @@ private:
 			auto &info = _info[id];
 			const auto label = parts.join(u" · "_q);
 			const auto changed = (info.label != label);
-			info = { .label = label, .lead = lead, .at = now };
+			info = {
+				.label = label,
+				.lead = lead,
+				.at = now,
+				.mine = anyMine,
+			};
 			if (changed) {
 				if (const auto item = _session->data().message(
 						OfficePeerId(),
@@ -248,7 +298,68 @@ private:
 	return i->second.get();
 }
 
+[[nodiscard]] QSettings &Settings() {
+	static QSettings result(u"California Recycles"_q, u"Calgram"_q);
+	return result;
+}
+
+[[nodiscard]] bool &OnlyMyLeadsValue() {
+	static auto result = Settings().value(u"only_my_leads"_q).toBool();
+	return result;
+}
+
+[[nodiscard]] bool RepliesToMe(not_null<const HistoryItem*> item) {
+	const auto reply = item->Get<HistoryMessageReply>();
+	const auto to = reply ? reply->resolvedMessage.get() : nullptr;
+	return to && to->out();
+}
+
+[[nodiscard]] bool Dimmed(not_null<const HistoryItem*> item) {
+	if (!OnlyMyLeadsValue() || !item->isRegular() || item->out()) {
+		return false;
+	} else if (item->mentionsMe() || RepliesToMe(item)) {
+		return false;
+	}
+	const auto leads = LeadsFor(item);
+	const auto mine = leads ? leads->mine(item->id) : std::nullopt;
+	return leads && mine.has_value() && !*mine;
+}
+
 } // namespace
+
+bool OnlyMyLeads() {
+	return OnlyMyLeadsValue();
+}
+
+void SetOnlyMyLeads(bool enabled) {
+	OnlyMyLeadsValue() = enabled;
+	Settings().setValue(u"only_my_leads"_q, enabled);
+}
+
+OnlyMyLeadsDimmer::OnlyMyLeadsDimmer(
+	QPainter &p,
+	not_null<const HistoryItem*> item)
+: _p(p)
+, _opacity(p.opacity()) {
+	if (Dimmed(item)) {
+		_p.setOpacity(_opacity * kDimmedOpacity);
+	}
+}
+
+OnlyMyLeadsDimmer::~OnlyMyLeadsDimmer() {
+	_p.setOpacity(_opacity);
+}
+
+std::optional<LeadRef> LeadFor(not_null<const HistoryItem*> item) {
+	const auto leads = LeadsFor(item);
+	return leads ? leads->lead(item->id) : std::nullopt;
+}
+
+void RefreshLead(not_null<const HistoryItem*> item) {
+	if (const auto leads = LeadsFor(item)) {
+		leads->refresh(item->id);
+	}
+}
 
 QString LeadOwnerLabel(not_null<const HistoryItem*> item) {
 	const auto leads = LeadsFor(item);

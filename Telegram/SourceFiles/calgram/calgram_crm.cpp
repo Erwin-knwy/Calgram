@@ -12,6 +12,7 @@ See CALGRAM.md.
 #include "history/history_item.h"
 #include "main/main_session.h"
 
+#include <QtCore/QJsonObject>
 #include <QtCore/QUrl>
 #include <QtCore/QUrlQuery>
 #include <QtGui/QDesktopServices>
@@ -88,11 +89,7 @@ private:
 					).arg(pending.path
 					).arg(status));
 			}
-			pending.done(
-				status,
-				(status == 200)
-					? QJsonDocument::fromJson(reply->readAll())
-					: QJsonDocument());
+			pending.done(status, QJsonDocument::fromJson(reply->readAll()));
 		});
 	}
 
@@ -214,6 +211,15 @@ void CrmRequest(
 		.body = std::move(body),
 		.done = std::move(done),
 	});
+}
+
+QString CrmError(int status, const QJsonDocument &json) {
+	const auto detail = json.object().value(u"detail"_q).toString();
+	return !detail.isEmpty()
+		? detail
+		: (status == 0)
+		? u"Couldn't reach the CRM. Try again in a minute."_q
+		: u"The CRM said no (%1)."_q.arg(status);
 }
 
 void OpenCrmPage(const QString &path) {

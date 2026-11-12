@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_inner_widget.h"
 
+#include "calgram/calgram_leads.h" // Calgram
 #include "calgram/calgram_menu.h" // Calgram
 #include "api/api_polls.h"
 #include "chat_helpers/stickers_emoji_pack.h"
@@ -1639,7 +1640,10 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			context.fullMessageSelected = selection.fullMessageSelected;
 			context.messageSelection = selection.messageSelection;
 			context.highlight = _widget->itemHighlight(view->data());
-			view->draw(p, context);
+			{
+				const auto dimmer = Calgram::OnlyMyLeadsDimmer(p, view->data()); // Calgram
+				view->draw(p, context);
+			}
 			processPainted(view, top, height);
 
 			top += height;
@@ -1708,7 +1712,10 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 				context.fullMessageSelected = selection.fullMessageSelected;
 				context.messageSelection = selection.messageSelection;
 				context.highlight = _widget->itemHighlight(item);
-				view->draw(p, context);
+				{
+					const auto dimmer = Calgram::OnlyMyLeadsDimmer(p, item); // Calgram
+					view->draw(p, context);
+				}
 				processPainted(view, top, height);
 			}
 			top += height;
@@ -3060,20 +3067,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					_history,
 					rootId,
 					highlightId);
-			}, &st::menuIconViewReplies);
-		}
-		// Calgram: "View Thread" on any reply in a group.
-		if (!topicRootId
-			&& item->history()->peer->isMegagroup()
-			&& item->replyToTop()
-			&& item->replyToTop() != item->id) {
-			const auto threadRootId = item->replyToTop();
-			const auto threadItemId = item->id;
-			_menu->addAction(u"View Thread"_q, [=] {
-				controller->showRepliesForMessage(
-					_history,
-					threadRootId,
-					threadItemId);
 			}, &st::menuIconViewReplies);
 		}
 		Calgram::FillMessageMenu(_menu.get(), controller, item); // Calgram

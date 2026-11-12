@@ -301,9 +301,10 @@ bool HoldForNumberCheck(
 	for (const auto &number : numbers) {
 		array.push_back(number);
 	}
-	const auto body = QJsonDocument(
-		QJsonObject{ { u"numbers"_q, array } }
-	).toJson(QJsonDocument::Compact);
+	const auto body = QJsonDocument(QJsonObject{
+		{ u"numbers"_q, array },
+		{ u"text"_q, text }, // For the CRM's same-address check.
+	}).toJson(QJsonDocument::Compact);
 	CrmRequest(session, u"/api/calgram/numbers"_q, body, [=](
 			int status,
 			QJsonDocument json) {
@@ -320,10 +321,14 @@ bool HoldForNumberCheck(
 		auto lines = QStringList();
 		const auto warnings = json.object().value(u"warnings"_q).toArray();
 		for (const auto &value : warnings) {
+			// The CRM's own wording (DNC, same address...), else the owner.
 			const auto warning = value.toObject();
-			lines.push_back(u"%1 is %2's lead."_q.arg(
-				FormatNumber(warning.value(u"number"_q).toString()),
-				warning.value(u"owner"_q).toString()));
+			const auto text = warning.value(u"text"_q).toString();
+			lines.push_back(!text.isEmpty()
+				? text
+				: u"%1 is %2's lead."_q.arg(
+					FormatNumber(warning.value(u"number"_q).toString()),
+					warning.value(u"owner"_q).toString()));
 		}
 		if (lines.isEmpty()) {
 			go();

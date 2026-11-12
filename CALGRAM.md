@@ -23,8 +23,7 @@ It is not made or endorsed by Telegram.
 | Own name, installer id, data folder (`%APPDATA%\Calgram`) and startup shortcut, so it runs next to official Telegram | `core/version.h` |
 | Own taskbar group and notifications | `platform/win/windows_app_user_model_id.cpp` |
 | Windows file details (company, product name) | `Resources/winrc/Telegram.rc` |
-| Calgram icon (the office recycle icon) | `Resources/art/icon256.ico`, `icon256.png`, `logo_256*.png`, `icon_round512@2x.png` |
-| "View Thread" on every reply in a group, not only on the first message | `history/history_inner_widget.cpp` |
+| Calgram icon (a white chat bubble with green recycle arrows on a blue circle; our own design, not Telegram's logo) | `Resources/art/icon256.ico`, `icon256.png`, `logo_256*.png`, `icon_round512@2x.png` |
 | Wallet hidden from the main menu | `window/window_main_menu.cpp` |
 | `tg://calgram_post?channel=1890609315&reply=<msg>&text=<text>`: opens the office group with the text typed as a reply to that message; the agent presses Send (for the CRM's "Post in Calgram") | `calgram/calgram_compose.*`, `core/local_url_handlers.cpp` |
 | Signs in to the CRM automatically with the bot web app's Telegram-signed data (no login) and calls its API | `calgram/calgram_crm.*` |
@@ -36,6 +35,9 @@ It is not made or endorsed by Telegram.
 | Main menu "My open items": unanswered mentions and wrong emails; a click jumps to the message to clear it | `calgram/calgram_menu.*`, `window/window_main_menu.cpp` |
 | Right-click the bot's "Wrong Email Address" post: "Reply \"Edited\"" types the reply; the agent presses Send | `calgram/calgram_menu.*`, `history/history_inner_widget.cpp`, `history/view/history_view_context_menu.cpp` |
 | Right-click a message with phone numbers: "Search (818) 555-1234 in CRM" and "Copy 8185551234" (first two numbers) | same as above |
+| "View Thread" on any reply in a group (right-click), opening the whole discussion at that reply | `calgram/calgram_menu.*`, `history/history_inner_widget.cpp` |
+| Right-click in the office group: "Lead details" (a card from `GET /api/leads/<id>`), "Claim this lead" on pool leads (`POST /api/leads/pool/<id>/claim`, same rules as the Leads Pool), "Email request" (types `#email #general`, the address and a greeting as a reply; the agent picks the script and sends), "Remind me..." (`POST /api/agent/followups`; the bot DMs the message's link then) | `calgram/calgram_menu.*` |
+| Main menu: "My open items (3)" shows the count; "Only my leads" fades office posts that aren't yours, don't mention you, don't reply to you and aren't about your leads (remembered between launches) | `calgram/calgram_menu.*`, `calgram/calgram_leads.*`, `window/window_main_menu.cpp`, `history/history_inner_widget.cpp` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
 
 ## CRM changes Calgram is ready for
@@ -43,11 +45,14 @@ It is not made or endorsed by Telegram.
 Calgram already asks for these; until the CRM has them, the feature stays
 quiet (no warning, no extra label) and everything else works.
 
-1. **`POST /api/calgram/numbers`** - body `{"numbers": ["8185551234"]}`,
-   answer `{"warnings": [{"number": "8185551234", "owner": "Hanna"}]}`:
-   only numbers on *another agent's* live lead, none for managers, using
-   Search Lead's ownership rules. Read-only. Feeds the warning before
-   sending.
+1. **`POST /api/calgram/numbers`** - body `{"numbers": ["8185551234"],
+   "text": "<the whole post>"}`, answer `{"warnings": [{"number":
+   "8185551234", "owner": "Hanna"}]}`: numbers on *another agent's* live
+   lead (Search Lead's ownership rules), none for managers. A warning may
+   instead carry its own `"text"`, shown as is - for a number on the Do
+   Not Call list, or "Ryan already has a lead at this address" when the
+   post's address matches another agent's lead. Read-only. Feeds the
+   "Send anyway?" question.
 2. **`/api/calgram/owners` extra fields** - per owner `"status"` (the
    status label) and `"follow_up"` (e.g. `"Nov 12"`, Pacific), only when
    the viewer may open the lead; top-level `"email": {"<msg id>":

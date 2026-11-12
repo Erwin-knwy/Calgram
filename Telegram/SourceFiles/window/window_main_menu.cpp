@@ -722,13 +722,7 @@ void MainMenu::setupMenu() {
 		)->setClickedCallback([=] {
 			controller->showPeerHistory(controller->session().user());
 		});
-		// Calgram: unanswered mentions and wrong emails.
-		addAction(
-			rpl::single(u"My open items"_q),
-			{ &st::menuIconNotifications }
-		)->setClickedCallback([=] {
-			Calgram::ShowOpenItems(controller);
-		});
+		Calgram::AddMainMenuItems(_menu, controller); // Calgram
 		const auto session = &controller->session();
 		const auto wallet = _menu->add(
 			object_ptr<Ui::SlideWrap<Ui::SettingsButton>>(
