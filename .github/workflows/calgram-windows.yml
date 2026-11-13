@@ -39,8 +39,10 @@ jobs:
 
     # attestations: GitHub signs a record that Calgram.exe was built here,
     # from this exact commit of the public code (build provenance).
+    # contents: write publishes Release builds of calgram on the Releases
+    # page, which anyone can download without a GitHub login.
     permissions:
-      contents: read
+      contents: write
       id-token: write
       attestations: write
 
@@ -325,3 +327,19 @@ jobs:
           name: Calgram-${{ env.CALGRAM_CONFIG }}-${{ env.SHORT_SHA }}
           path: artifact\
           retention-days: 30
+
+      - name: Publish on the Releases page.
+        if: github.ref == 'refs/heads/calgram' && env.CALGRAM_CONFIG == 'Release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ZIP="Calgram-${SHORT_SHA}.zip"
+          pwsh -NoProfile -Command "Compress-Archive -Path artifact/* -DestinationPath '$ZIP'"
+          SHA256=$(cut -d' ' -f1 artifact/Calgram.exe.sha256.txt)
+          gh release create "calgram-${SHORT_SHA}" "$ZIP" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Calgram ${SHORT_SHA}" \
+            --latest \
+            --notes "Calgram for the office's Windows laptops, built by GitHub from commit ${GITHUB_SHA}. Download the zip, unzip it and run Calgram.exe. Calgram.exe fingerprint (SHA256): ${SHA256} - check it with PowerShell's Get-FileHash Calgram.exe and on this repo's Actions -> Attestations page."
