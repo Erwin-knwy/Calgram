@@ -66,7 +66,8 @@ live since CRM commit 5d6538c (2026-11-13):
 ## Building
 
 GitHub builds Calgram for free: **Actions -> Calgram Windows -> Run
-workflow** (or any push to `calgram` or a `feature/...` branch, as Debug). The result is `Calgram.exe` under
+workflow** - or just push: a push to `calgram` builds **Release** (what
+agents get), a push to a `feature/...` branch builds Debug. The result is `Calgram.exe` under
 the run's *Artifacts*. The first build compiles all of Telegram's
 libraries and can take longer than GitHub's 6-hour limit; just re-run it,
 and it continues where it stopped.
