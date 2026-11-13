@@ -2675,6 +2675,7 @@ PRIVATE
     qrc/telegram/telegram.qrc
     qrc/telegram/sounds.qrc
     qrc/telegram/tgw.qrc
+    qrc/calgram.qrc
     winrc/Telegram.rc
     winrc/Telegram.manifest
     langs/lang.strings

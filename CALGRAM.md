@@ -38,6 +38,7 @@ It is not made or endorsed by Telegram.
 | "View Thread" on any reply in a group (right-click), opening the whole discussion at that reply | `calgram/calgram_menu.*`, `history/history_inner_widget.cpp` |
 | Right-click in the office group: "Lead details" (a card from `GET /api/leads/<id>`), "Claim this lead" on pool leads (`POST /api/leads/pool/<id>/claim`, same rules as the Leads Pool), "Email request" (types `#email #general`, the address and a greeting as a reply; the agent picks the script and sends), "Remind me..." (`POST /api/agent/followups`; the bot DMs the message's link then) | `calgram/calgram_menu.*` |
 | Main menu: "My open items (3)" shows the count; "Only my leads" fades office posts that aren't yours, don't mention you, don't reply to you and aren't about your leads (remembered between launches) | `calgram/calgram_menu.*`, `calgram/calgram_leads.*`, `window/window_main_menu.cpp`, `history/history_inner_widget.cpp` |
+| Main menu "Look": the CRM's seven Looks (Modern, Classic, Cyberpunk, GTA VI, Kurosawa, CA, Lumiere), each light and dark, as Telegram themes; picking one shows Telegram's usual preview with Apply/Cancel. Made from the CRM's CSS by `tools/calgram_themes.py` (rerun it when the CRM's Looks change) | `Resources/calgram/*.tdesktop-theme`, `Resources/qrc/calgram.qrc`, `tools/`, `calgram/calgram_menu.*`, `CMakeLists.txt` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
 
 ## CRM endpoints Calgram uses
