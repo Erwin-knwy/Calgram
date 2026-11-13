@@ -16,12 +16,12 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        description: "Debug builds faster; Release is what agents get."
+        description: "Debug builds faster; Release is what agents get. A push to calgram builds Release, a feature branch Debug."
         type: choice
         options: [Debug, Release]
         default: Debug
   push:
-    branches: [calgram]
+    branches: [calgram, 'feature/**']
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   windows:
-    name: Calgram x64 (${{ inputs.config || 'Debug' }})
+    name: Calgram x64 (${{ (inputs.config || (github.ref == 'refs/heads/calgram' && 'Release' || 'Debug')) }})
     runs-on: windows-latest
     timeout-minutes: 360
 
@@ -45,7 +45,7 @@ jobs:
       attestations: write
 
     env:
-      CALGRAM_CONFIG: ${{ inputs.config || 'Debug' }}
+      CALGRAM_CONFIG: ${{ (inputs.config || (github.ref == 'refs/heads/calgram' && 'Release' || 'Debug')) }}
       PREPARE_PATH: "Telegram/build/prepare/prepare.py"
 
     defaults:
@@ -57,7 +57,7 @@ jobs:
       # ~28 GB free next to everything GitHub preinstalls. Drop big tools we
       # never use.
       - name: Free disk space (Release).
-        if: (inputs.config || 'Debug') == 'Release'
+        if: (inputs.config || (github.ref == 'refs/heads/calgram' && 'Release' || 'Debug')) == 'Release'
         shell: pwsh
         run: |
           Get-PSDrive -PSProvider FileSystem | Format-Table Name, @{n='FreeGB';e={[math]::Round($_.Free/1GB,1)}}
@@ -281,9 +281,24 @@ jobs:
           -D CMAKE_CONFIGURATION_TYPES=%CALGRAM_CONFIG% ^
           -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
-          -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
+          -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON > %TBUILD%\calgram_build.log 2>&1
 
-          cmake --build ..\out --config %CALGRAM_CONFIG% --parallel
+          cmake --build ..\out --config %CALGRAM_CONFIG% --parallel >> %TBUILD%\calgram_build.log 2>&1
+          set RC=%ERRORLEVEL%
+          type %TBUILD%\calgram_build.log
+          exit /b %RC%
+
+      # The log needs a GitHub login to read; a note on the run page doesn't.
+      - name: Show build errors.
+        if: failure()
+        shell: bash
+        run: |
+          LOG="$TBUILD/calgram_build.log"
+          [ -f "$LOG" ] || exit 0
+          grep -aiE "error|failed" "$LOG" | grep -aviE "warning|0 error" \
+            | awk '!seen[$0]++' | head -40 | cut -c1-400 > errors.txt || true
+          MSG=$(sed -e 's/%/%25/g' -e 's/\r//g' errors.txt | awk '{printf "%s%%0A", $0}')
+          echo "::error title=Calgram build errors::${MSG}"
 
       - name: Package.
         shell: bash
@@ -299,7 +314,7 @@ jobs:
       # commit of the public code. Check it: the repo's Actions ->
       # Attestations page, or `gh attestation verify Calgram.exe -R
       # Erwin-knwy/Calgram`. See CALGRAM.md "Proving a download".
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         name: Sign build provenance.
         with:
           subject-path: artifact/Calgram.exe

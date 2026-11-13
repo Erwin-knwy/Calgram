@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_element.h"
 
+#include "calgram/calgram_text.h" // Calgram
 #include "apiwrap.h"
 #include "api/api_transcribes.h"
 #include "history/view/history_view_service_message.h"
@@ -2283,7 +2284,9 @@ void Element::validateText() {
 		if (!unavailable.isEmpty()) {
 			setTextWithLinks(tr::italic(unavailable));
 		} else {
-			setTextWithLinks(_textItem->translatedTextWithLocalEntities());
+			setTextWithLinks(Calgram::CollapseLongText( // Calgram
+				item,
+				_textItem->translatedTextWithLocalEntities()));
 			richPage = _textItem->translatedRichPage();
 		}
 	}

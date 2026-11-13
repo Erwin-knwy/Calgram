@@ -5,9 +5,9 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
-#include "calgram/calgram_crm.h" // Calgram
 #include "history/view/history_view_message.h"
 
+#include "calgram/calgram_leads.h" // Calgram
 #include "api/api_suggest_post.h"
 #include "api/api_transcribes.h"
 #include "base/options.h"
@@ -1166,7 +1166,7 @@ void Message::refreshRightBadge() {
 			? delegate()->elementAuthorRank(this)
 			: TextUtilities::RemoveEmoji(TextUtilities::SingleLine(text)))
 	};
-	// Calgram: whose CRM lead this message is about, next to the rank.
+	// Calgram: the CRM lead's owner, next to the rank.
 	if (const auto lead = Calgram::LeadOwnerLabel(item); !lead.isEmpty()) {
 		tagText = TextWithEntities{ tagText.empty()
 			? lead
@@ -4368,6 +4368,11 @@ bool Message::getStateFromName(
 				? (boostLeft - st::msgTagBadgeBoostSkip)
 				: badgeRight;
 			if (point.x() >= badgeLeft && point.x() < tagRight) {
+				// Calgram: a click on "Lead: ..." opens the lead.
+				if (auto lead = Calgram::LeadLink(item)) {
+					outResult->link = std::move(lead);
+					return true;
+				}
 				if (badge->special) {
 					return false;
 				}

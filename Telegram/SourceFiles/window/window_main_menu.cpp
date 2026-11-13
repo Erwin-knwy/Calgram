@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_main_menu.h"
 
+#include "calgram/calgram_menu.h" // Calgram
 #include "apiwrap.h"
 #include "base/event_filter.h"
 #include "base/qt_signal_producer.h"
@@ -721,6 +722,7 @@ void MainMenu::setupMenu() {
 		)->setClickedCallback([=] {
 			controller->showPeerHistory(controller->session().user());
 		});
+		Calgram::AddMainMenuItems(_menu, controller); // Calgram
 		const auto session = &controller->session();
 		const auto wallet = _menu->add(
 			object_ptr<Ui::SlideWrap<Ui::SettingsButton>>(
@@ -736,7 +738,7 @@ void MainMenu::setupMenu() {
 			st::mainMenuButton);
 		wallet->toggleOn(session->appConfig().value(
 		) | rpl::map([=] {
-			// Calgram: the office doesn't use the wallet - never show it.
+			// Calgram: no wallet.
 			return false && session->appConfig().walletAvailable();
 		}) | rpl::distinct_until_changed());
 		wallet->finishAnimating();

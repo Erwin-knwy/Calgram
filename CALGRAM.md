@@ -23,12 +23,40 @@ It is not made or endorsed by Telegram.
 | Own name, installer id, data folder (`%APPDATA%\Calgram`) and startup shortcut, so it runs next to official Telegram | `core/version.h` |
 | Own taskbar group and notifications | `platform/win/windows_app_user_model_id.cpp` |
 | Windows file details (company, product name) | `Resources/winrc/Telegram.rc` |
-| Calgram icon (the office recycle icon) | `Resources/art/icon256.ico`, `icon256.png`, `logo_256*.png`, `icon_round512@2x.png` |
-| "View Thread" on every reply in a group, not only on the first message | `history/history_inner_widget.cpp` |
+| Calgram icon (a white chat bubble with green recycle arrows on a blue circle; our own design, not Telegram's logo) | `Resources/art/icon256.ico`, `icon256.png`, `logo_256*.png`, `icon_round512@2x.png` |
 | Wallet hidden from the main menu | `window/window_main_menu.cpp` |
-| `tg://calgram_post?channel=1890609315&reply=<msg>&text=<text>`: opens the office group with the text typed as a reply to that message; the agent presses Send (for the CRM's "Post in Calgram") | `core/local_url_handlers.cpp` |
-| "Lead: Hanna" / "Lead: You" / "Lead: Pool" next to the sender on every office-group message: signs in to the CRM automatically with the bot web app's Telegram-signed data (no login), asks `POST /api/calgram/owners` | `calgram/calgram_crm.*`, `history/view/history_view_message.cpp`, `CMakeLists.txt` |
+| `tg://calgram_post?channel=1890609315&reply=<msg>&text=<text>`: opens the office group with the text typed as a reply to that message; the agent presses Send (for the CRM's "Post in Calgram") | `calgram/calgram_compose.*`, `core/local_url_handlers.cpp` |
+| Signs in to the CRM automatically with the bot web app's Telegram-signed data (no login) and calls its API | `calgram/calgram_crm.*` |
+| "Lead: Hanna" / "Lead: You" / "Lead: Pool" next to the sender on every office-group message, plus the lead's status, follow-up date and the `#email` request's status once the CRM sends them (`POST /api/calgram/owners`, refreshed every 5 minutes) | `calgram/calgram_leads.*`, `history/view/history_view_message.cpp` |
+| Click on "Lead: ..." opens that lead in the CRM (an agent's own, a pool lead, or any lead for an admin); someone else's lead shows whose it is | `calgram/calgram_leads.*`, `history/view/history_view_message.cpp` |
+| Long office-group posts (emails, lead posts) show their first 3 lines; the rest (300+ characters) is a collapsed quote that opens with a click | `calgram/calgram_text.*`, `history/view/history_view_element.cpp` |
+| Before a post with a phone number goes out in the office group, asks "(818) 555-1234 is Hanna's lead. Send anyway?" if the CRM says so; waits at most 2 seconds, never blocks | `calgram/calgram_compose.*`, `history/history_widget.cpp`, `history/view/history_view_chat_section.cpp` |
+| Typing `#` in the office group suggests the script tags (`#general`, own `#name_script`, `#email`, `#text`, `#DNC_list`...) | `calgram/calgram_compose.*`, `chat_helpers/field_autocomplete.cpp` |
+| Main menu "My open items": unanswered mentions and wrong emails; a click jumps to the message to clear it | `calgram/calgram_menu.*`, `window/window_main_menu.cpp` |
+| Right-click the bot's "Wrong Email Address" post: "Reply \"Edited\"" types the reply; the agent presses Send | `calgram/calgram_menu.*`, `history/history_inner_widget.cpp`, `history/view/history_view_context_menu.cpp` |
+| Right-click a message with phone numbers: "Search (818) 555-1234 in CRM" and "Copy 8185551234" (first two numbers) | same as above |
+| "View Thread" on any reply in a group (right-click), opening the whole discussion at that reply | `calgram/calgram_menu.*`, `history/history_inner_widget.cpp` |
+| Right-click in the office group: "Lead details" (a card from `GET /api/leads/<id>`), "Claim this lead" on pool leads (`POST /api/leads/pool/<id>/claim`, same rules as the Leads Pool), "Email request" (types `#email #general`, the address and a greeting as a reply; the agent picks the script and sends), "Remind me..." (`POST /api/agent/followups`; the bot DMs the message's link then) | `calgram/calgram_menu.*` |
+| Main menu: "My open items (3)" shows the count; "Only my leads" fades office posts that aren't yours, don't mention you, don't reply to you and aren't about your leads (remembered between launches) | `calgram/calgram_menu.*`, `calgram/calgram_leads.*`, `window/window_main_menu.cpp`, `history/history_inner_widget.cpp` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
+
+## CRM endpoints Calgram uses
+
+All in the CRM repo (`mini_search/app.py`, rules in `core/calgram_owners.py`),
+live since CRM commit 5d6538c (2026-11-13):
+
+- `POST /api/calgram/owners` - "Lead: ..." labels, with the lead's status,
+  next follow-up and the `#email` request's status.
+- `POST /api/calgram/numbers` - the "Send anyway?" question: another
+  agent's number, a Do Not Call number, another agent's lead at the
+  post's address. Managers get DNC warnings only.
+- `GET /api/calgram/script-tags` - `#email`, approved private and `#text`
+  script tags for the `#` suggestions.
+- `/crm/app/search-lead?q=<number>` - Search Lead with the number filled
+  in (`?number=` works too, for builds before 2026-11-13).
+- Existing agent endpoints: `/api/agent/unanswered-mentions`,
+  `/api/agent/wrong-emails`, `/api/leads/<id>`,
+  `/api/leads/pool/<id>/claim`, `/api/agent/followups`.
 
 ## Branches
 
@@ -38,7 +66,8 @@ It is not made or endorsed by Telegram.
 ## Building
 
 GitHub builds Calgram for free: **Actions -> Calgram Windows -> Run
-workflow** (or any push to `calgram`). The result is `Calgram.exe` under
+workflow** - or just push: a push to `calgram` builds **Release** (what
+agents get), a push to a `feature/...` branch builds Debug. The result is `Calgram.exe` under
 the run's *Artifacts*. The first build compiles all of Telegram's
 libraries and can take longer than GitHub's 6-hour limit; just re-run it,
 and it continues where it stopped.

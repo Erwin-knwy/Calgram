@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_context_menu.h"
 
+#include "calgram/calgram_menu.h" // Calgram
 #include "api/api_attached_stickers.h"
 #include "api/api_editing.h"
 #include "api/api_global_privacy.h"
@@ -1391,6 +1392,9 @@ void AddTopMessageActions(
 	AddFactcheckAction(menu, request, list);
 	AddPinMessageAction(menu, request, list);
 	AddViewStatisticsAction(menu, request, list);
+	if (request.item) { // Calgram
+		Calgram::FillMessageMenu(menu, list->controller(), request.item);
+	}
 }
 
 void AddMessageActions(

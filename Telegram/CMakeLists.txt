@@ -517,8 +517,16 @@ PRIVATE
     calls/calls_video_incoming.h
     calls/calls_window.cpp
     calls/calls_window.h
+    calgram/calgram_compose.cpp
+    calgram/calgram_compose.h
     calgram/calgram_crm.cpp
     calgram/calgram_crm.h
+    calgram/calgram_leads.cpp
+    calgram/calgram_leads.h
+    calgram/calgram_menu.cpp
+    calgram/calgram_menu.h
+    calgram/calgram_text.cpp
+    calgram/calgram_text.h
     chat_helpers/compose/compose_features.h
     chat_helpers/compose/compose_show.cpp
     chat_helpers/compose/compose_show.h
