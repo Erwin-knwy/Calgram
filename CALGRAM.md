@@ -40,31 +40,23 @@ It is not made or endorsed by Telegram.
 | Main menu: "My open items (3)" shows the count; "Only my leads" fades office posts that aren't yours, don't mention you, don't reply to you and aren't about your leads (remembered between launches) | `calgram/calgram_menu.*`, `calgram/calgram_leads.*`, `window/window_main_menu.cpp`, `history/history_inner_widget.cpp` |
 | Auto-update and crash reports off (build settings) | `.github/workflows/calgram-windows.yml` |
 
-## CRM changes Calgram is ready for
+## CRM endpoints Calgram uses
 
-Calgram already asks for these; until the CRM has them, the feature stays
-quiet (no warning, no extra label) and everything else works.
+All in the CRM repo (`mini_search/app.py`, rules in `core/calgram_owners.py`),
+live since CRM commit 5d6538c (2026-11-13):
 
-1. **`POST /api/calgram/numbers`** - body `{"numbers": ["8185551234"],
-   "text": "<the whole post>"}`, answer `{"warnings": [{"number":
-   "8185551234", "owner": "Hanna"}]}`: numbers on *another agent's* live
-   lead (Search Lead's ownership rules), none for managers. A warning may
-   instead carry its own `"text"`, shown as is - for a number on the Do
-   Not Call list, or "Ryan already has a lead at this address" when the
-   post's address matches another agent's lead. Read-only. Feeds the
-   "Send anyway?" question.
-2. **`/api/calgram/owners` extra fields** - per owner `"status"` (the
-   status label) and `"follow_up"` (e.g. `"Nov 12"`, Pacific), only when
-   the viewer may open the lead; top-level `"email": {"<msg id>":
-   "Waiting for review" | "Sent" | "Wrong email"}` for `#email` posts.
-3. **Search Lead takes a number from the address** -
-   `/crm/app/search-lead?number=8185551234` fills the search and runs it.
-   Until then the menu item just opens Search Lead.
-4. **`GET /api/calgram/script-tags`** - `{"scripts": [{"tag": "general"},
-   ...]}` with every `#email` script, the agent's approved private
-   scripts and the `#text` scripts (today only the SMS panel can read
-   those). Until then Calgram uses `/api/agent/scripts` and
-   `/api/agent/private-scripts?status=approved`.
+- `POST /api/calgram/owners` - "Lead: ..." labels, with the lead's status,
+  next follow-up and the `#email` request's status.
+- `POST /api/calgram/numbers` - the "Send anyway?" question: another
+  agent's number, a Do Not Call number, another agent's lead at the
+  post's address. Managers get DNC warnings only.
+- `GET /api/calgram/script-tags` - `#email`, approved private and `#text`
+  script tags for the `#` suggestions.
+- `/crm/app/search-lead?q=<number>` - Search Lead with the number filled
+  in (`?number=` works too, for builds before 2026-11-13).
+- Existing agent endpoints: `/api/agent/unanswered-mentions`,
+  `/api/agent/wrong-emails`, `/api/leads/<id>`,
+  `/api/leads/pool/<id>/claim`, `/api/agent/followups`.
 
 ## Branches
 

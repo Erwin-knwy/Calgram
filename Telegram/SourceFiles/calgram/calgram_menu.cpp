@@ -508,7 +508,7 @@ void FillMessageMenu(
 		const auto number = numbers[i];
 		const auto shown = FormatPhone(number);
 		menu->addAction(u"Search %1 in CRM"_q.arg(shown), [=] {
-			OpenCrmPage(u"/app/search-lead?number="_q + number);
+			OpenCrmPage(u"/app/search-lead?q="_q + number);
 		}, &st::menuIconSearch);
 		menu->addAction(u"Copy %1"_q.arg(number), [=] {
 			QGuiApplication::clipboard()->setText(number);
