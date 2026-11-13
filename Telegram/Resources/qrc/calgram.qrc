@@ -1,0 +1,18 @@
+<RCC>
+  <qresource prefix="/calgram">
+    <file alias="modern-light.tdesktop-theme">../calgram/modern-light.tdesktop-theme</file>
+    <file alias="modern-dark.tdesktop-theme">../calgram/modern-dark.tdesktop-theme</file>
+    <file alias="classic-light.tdesktop-theme">../calgram/classic-light.tdesktop-theme</file>
+    <file alias="classic-dark.tdesktop-theme">../calgram/classic-dark.tdesktop-theme</file>
+    <file alias="cyberpunk-dark.tdesktop-theme">../calgram/cyberpunk-dark.tdesktop-theme</file>
+    <file alias="cyberpunk-light.tdesktop-theme">../calgram/cyberpunk-light.tdesktop-theme</file>
+    <file alias="gtavi-dark.tdesktop-theme">../calgram/gtavi-dark.tdesktop-theme</file>
+    <file alias="gtavi-light.tdesktop-theme">../calgram/gtavi-light.tdesktop-theme</file>
+    <file alias="kurosawa-light.tdesktop-theme">../calgram/kurosawa-light.tdesktop-theme</file>
+    <file alias="kurosawa-dark.tdesktop-theme">../calgram/kurosawa-dark.tdesktop-theme</file>
+    <file alias="ca-light.tdesktop-theme">../calgram/ca-light.tdesktop-theme</file>
+    <file alias="ca-dark.tdesktop-theme">../calgram/ca-dark.tdesktop-theme</file>
+    <file alias="lumiere-dark.tdesktop-theme">../calgram/lumiere-dark.tdesktop-theme</file>
+    <file alias="lumiere-light.tdesktop-theme">../calgram/lumiere-light.tdesktop-theme</file>
+  </qresource>
+</RCC>

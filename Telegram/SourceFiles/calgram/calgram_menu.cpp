@@ -24,6 +24,7 @@ See CALGRAM.md.
 #include "ui/widgets/labels.h"
 #include "ui/widgets/popup_menu.h"
 #include "ui/wrap/vertical_layout.h"
+#include "window/themes/window_theme.h"
 #include "window/window_session_controller.h"
 #include "styles/style_boxes.h"
 #include "styles/style_layers.h"
@@ -396,6 +397,51 @@ void RemindBox(
 	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
 }
 
+// The CRM's Looks, made by tools/calgram_themes.py; the CRM's own first
+// mode for each comes first.
+struct LookTheme {
+	const char *key;
+	const char *name;
+	bool darkFirst = false;
+};
+constexpr auto kLooks = std::array<LookTheme, 7>{ {
+	{ "modern", "Modern", false },
+	{ "classic", "Classic", false },
+	{ "cyberpunk", "Cyberpunk", true },
+	{ "gtavi", "GTA VI", true },
+	{ "kurosawa", "Kurosawa", false },
+	{ "ca", "CA", false },
+	{ "lumiere", "Lumiere", true },
+} };
+
+void LooksBox(not_null<Ui::GenericBox*> box) {
+	box->setTitle(u"Look"_q);
+	box->setWidth(st::boxWideWidth);
+	box->addRow(object_ptr<Ui::FlatLabel>(
+		box,
+		u"The CRM's Looks. Telegram's own: Settings > Chat Settings."_q,
+		st::boxLabel));
+	for (const auto &look : kLooks) {
+		for (const auto dark : { look.darkFirst, !look.darkFirst }) {
+			const auto mode = dark ? u"dark"_q : u"light"_q;
+			const auto path = u":/calgram/%1-%2.tdesktop-theme"_q.arg(
+				QString::fromLatin1(look.key),
+				mode);
+			const auto button = box->verticalLayout()->add(
+				object_ptr<Ui::SettingsButton>(
+					box,
+					rpl::single(QString::fromLatin1(look.name)
+						+ u", "_q
+						+ mode)));
+			button->setClickedCallback([=] {
+				box->closeBox();
+				Window::Theme::Apply(path);
+			});
+		}
+	}
+	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
+}
+
 } // namespace
 
 void ShowOpenItems(not_null<Window::SessionController*> controller) {
@@ -427,6 +473,15 @@ void AddMainMenuItems(
 			*label = u"My open items (%1)"_q.arg(count);
 		}
 	}));
+
+	Settings::AddButtonWithIcon(
+		menu,
+		rpl::single(u"Look"_q),
+		st::mainMenuButton,
+		{ &st::menuIconPalette }
+	)->setClickedCallback([=] {
+		controller->show(Box(LooksBox));
+	});
 
 	const auto mine = Settings::AddButtonWithIcon(
 		menu,
